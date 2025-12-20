@@ -1,0 +1,27 @@
+# 编译产物
+build/
+bin/
+*.o
+*.a
+*.so
+
+# CMake 产生的临时文件
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+cmake-build-*/
+
+# 测试目录下的编译产物
+tests/build/
+
+# 编辑器与 IDE 配置
+.vscode/
+.idea/
+.DS_Store
+
+# AI 临时目录
+.gemini/
+
+# 项目文档（用户要求忽略）
+ARCHITECTURE.md
