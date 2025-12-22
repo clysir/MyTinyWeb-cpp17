@@ -1,13 +1,19 @@
 #include "../include/Server.h"
 #include "../include/EventLoop.h"
-#include "../include/InetAddress.h"
 #include <iostream>
 
 int main() {
-    EventLoop* loop = new EventLoop();
-    InetAddress addr("127.0.0.1", 8008);
-    Server server(loop, addr);
+    EventLoop loop;
+    InetAddress localAddr("127.0.0.1", 8008);
+    Server server(&loop, localAddr);
 
-    loop->loop();
+    server.setMessageCallback([](const TcpConnection::Ptr& conn, Buffer* buf) {
+        std::string msg = buf->retrieveAllAsString();
+        std::cout << "Recv: " << msg << std::endl;
+        conn->send("Echo " + msg);
+    });
+    loop.loop();
     return 0;
 }
+
+

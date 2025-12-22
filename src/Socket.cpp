@@ -1,42 +1,57 @@
 #include "../include/Socket.h"
 #include "../include/InetAddress.h"
 #include <sys/socket.h>
-#include <unistd.h>
+#include <iostream>
 #include <fcntl.h>
 
 Socket::Socket() {
-    _fd = socket(AF_INET,SOCK_STREAM,0);
+    _fd = ::socket(AF_INET,SOCK_STREAM,0);
     if (_fd < 0) {
-        perror("socket failed");
-        exit(-1);
+        std::cerr << "Socket failed, error: " << errno << std::endl;
     }
+    setReuseAddr(true);
+    setReusePort(true);
+}
+//设置地址复用
+void Socket::setReuseAddr(bool on) {
+    int optval = on ? 1 : 0;
+    // SOL_SOCKET 代表设置 Socket 层面的属性
+    ::setsockopt(_fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
 }
 
-void Socket::Bind(const InetAddress& addr) {
-   if( bind(_fd,addr.GetSockAddr(),addr.GetSockAddrLen()) < 0 ) {
-       perror("Bind failed");
-       exit(-1);
+void Socket::setReusePort(bool on) {
+    int optval = on ? 1 : 0;
+    ::setsockopt(_fd, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval));
+}
+
+void Socket::bindAddress(const InetAddress& addr) {
+   if( ::bind(_fd,addr.getSockAddr(),addr.getSockAddrLen()) < 0 ) {
+       std::cerr << "Bind failed, error: " << errno << std::endl;
    }
 
 }
 
-void Socket::Listen() {
-    if (listen(_fd,5) < 0) {
-        perror("Listen failed");
-        exit(-1);
+void Socket::listen() {
+    if ( ::listen(_fd,5) < 0) {
+        std::cerr << "Listen failed, error: " << errno << std::endl;
     }
 }
 
-void Socket::SetNonBlocking() {
+void Socket::setNonBlocking() {
     fcntl(_fd, F_SETFL, fcntl(_fd, F_GETFL) | O_NONBLOCK);
 }
 
-int Socket::Accept(InetAddress& addr) {
+int Socket::accept(InetAddress& peeraddr) {
     socklen_t len = sizeof(struct sockaddr_in);
-    int accept_fd = accept(_fd,addr.GetSockAddr(),&len);
+    int accept_fd = ::accept(_fd,peeraddr.getSockAddr(),&len);
     if (accept_fd < 0) {
-        perror("Accept failed");
-        exit(-1);
+        std::cerr << "Accept failed, error: " << errno << std::endl;
     }
     return accept_fd;
+}
+
+Socket::~Socket() {
+    if (_fd != -1) {
+        ::close(_fd);
+    }
 }

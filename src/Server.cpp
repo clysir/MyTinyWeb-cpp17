@@ -5,58 +5,49 @@
 #include <iostream>
 #include <unistd.h>
 
-Server::Server(EventLoop* loop, const InetAddress& addr) {
-    _loop = loop;
-
-    _socket = std::make_unique<Socket>();
-    _socket->Bind(addr);
-    _socket->Listen();
-    _socket->SetNonBlocking();
+Server::Server(EventLoop* loop, const InetAddress& addr) 
+            : _loop{loop}, _localAddr{addr},
+              _socket{std::make_unique<Socket>()},
+              _channel{std::make_unique<Channel>(_loop->getEpoll(), _socket->getFd())}
+{
+    _socket->bindAddress(addr);
+    _socket->listen();
+    _socket->setNonBlocking();
     
-    _channel = std::make_unique<Channel>(_loop->getEpoll(), _socket->GetFd());
-    //_channel->setReadCallback(std::bind(&Server::handleNewConnection, this));
+    //只设置读回调
     _channel->setReadCallback([this]() { handleNewConnection(); });
     _channel->enableReading();
 }
 
 void Server::handleNewConnection() {
-    InetAddress client_addr;
-    int client_fd = _socket->Accept(client_addr);
-    std::cout << "New Connection form Client:[" << client_fd << "] " << std::endl;
+    //处理连接
+    InetAddress peerAddr;
+    int connfd = _socket->accept(peerAddr);
+    if(connfd < 0) return; 
+    std::cout << "New Connection form Client:[" << connfd << "] " << std::endl;
 
-    _client_sockets[client_fd] = std::make_unique<Socket>(client_fd); 
-    _client_channels[client_fd] = std::make_unique<Channel>(_loop->getEpoll(), client_fd);
+    //创建一个TcpConnection
+    auto conn = std::make_shared<TcpConnection>(_loop, connfd, _localAddr, peerAddr);
+    
+    conn->setConnectionCallback(_connectionCallback);
+    conn->setMessageCallback(_messageCallback);
 
-    //设置Channel的回调
-    //_client_channels[client_fd]->setReadCallback(std::bind(&Server::handleEvent, this, client_fd));
-    _client_channels[client_fd]->setReadCallback([this, client_fd]() { handleEvent(client_fd); });
-    //开启监听
-    _client_channels[client_fd]->enableReading();
+    conn->setCloseCallback([this](const TcpConnection::Ptr& conn) { removeConnection(conn); });
+    //保存连接
+    _connection[connfd] = conn;
+
+    //激活连接
+    conn->connectEstablished();
 }
 
-void Server::handleEvent(int fd) {
-    //目前是实现echo 我们接收到什么 就发送回去
-    char buffer[1024];
-    int read_byte = read(fd, buffer, sizeof(buffer) - 1);
-    if (read_byte > 0) {
-        buffer[read_byte] = '\0';
-        std::cout << "Recv: " << buffer << std::endl;
-        write(fd, buffer, read_byte);
-    }
-    else if (read_byte == 0) {
-        std::cout << "Client is disconnect " << std::endl;
-        _client_channels.erase(fd);
-        _client_sockets.erase(fd);
-        //close(fd);
-    }
-    else {
-        perror("handleEvent failed");
-        _client_channels.erase(fd); //智能指针会自动析构 close掉fd
-        _client_sockets.erase(fd);
-        //close(fd);
-    }
+void Server::removeConnection(const TcpConnection::Ptr& conn) {
+    _connection.erase(conn->getFd());
+    conn->connectDestroyed();
 }
 
-Server::~Server() {
 
-}
+
+
+
+
+

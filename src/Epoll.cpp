@@ -1,47 +1,69 @@
 #include "../include/Epoll.h"
+#include "../include/Channel.h"
 #include <unistd.h>
-#include <cstdio>
-#include <cstdlib>
-#include <Channel.h>
-#include <sys/epoll.h>
+#include <iostream>
 
-Epoll::Epoll() {
-    _epoll_fd = epoll_create1(0);
-    // 注意这不是支持的最大连接数，而是一次 epoll_wait 能返回的最大事件数
-    _events = new struct epoll_event[1024];
+// 初始监听事件数量
+static constexpr int kInitEventListSize = 16;
+
+Epoll::Epoll() 
+    : _epoll_fd{::epoll_create1(EPOLL_CLOEXEC)},
+      _events(kInitEventListSize)
+{
+    if (_epoll_fd < 0) {
+        std::cerr << "Epoll create failed, error: " << errno << std::endl;
+    }
 }
 
 void Epoll::updateChannel(Channel* ch) {
-    int fd = ch->getFd();
-    struct epoll_event ev;
+    struct epoll_event ev{};//将内存清零
     ev.events = ch->getEvents();
     ev.data.ptr = ch;//将指针存入
 
-    if(ch->isInEpoll()) {
-        //已经在树上，此时修改
-        epoll_ctl(_epoll_fd, EPOLL_CTL_MOD, fd, &ev);
+    int fd = ch->getFd();
+    const int op = ch->isInEpoll() ? EPOLL_CTL_MOD : EPOLL_CTL_ADD;
+
+    if(::epoll_ctl(_epoll_fd, op, fd, &ev) < 0) {
+        std::cerr << "Epoll update failed, op: " << op << ", fd: " << fd << std::endl;
     } else {
-        //不在树上，此时添加
-        epoll_ctl(_epoll_fd, EPOLL_CTL_ADD, fd, &ev);
         ch->setInEpoll(true);
     }
 }
 
-std::vector<Channel*> Epoll::poll(int timeout) {
-    std::vector<Channel*> channels;
-    int nfds = epoll_wait(_epoll_fd, _events, 1024, timeout);
-    for(int i = 0; i < nfds; i++) {
-        Channel* ch = (Channel*)_events[i].data.ptr;
-        ch->setRevents(_events[i].events);//告诉Channel 发生了什么事
-        channels.push_back(ch);
+void Epoll::removeChannel(Channel* ch) {
+    if(ch->isInEpoll()) {
+        ::epoll_ctl(_epoll_fd, EPOLL_CTL_DEL, ch->getFd(), nullptr);
+        ch->setInEpoll(false);
     }
-    return channels;
+}
+
+std::vector<Channel*> Epoll::poll(int timeout) {
+    // 调用内核接口
+    int numEvents = ::epoll_wait(_epoll_fd, _events.data(), static_cast<int>(_events.size()), timeout);
+
+    std::vector<Channel*> activeChannels;
+    if(numEvents > 0) {
+        for(int i = 0; i < numEvents; i++) {
+            Channel* ch = static_cast<Channel*>(_events[i].data.ptr);
+            ch->setRevents(_events[i].events);
+            activeChannels.push_back(ch);
+        }
+
+        //如果事件满了 就下次扩容
+        if(static_cast<size_t>(numEvents) == _events.size()) {
+            _events.resize(_events.size() * 2);
+        }
+    } else if(numEvents < 0) {
+        if(errno != EINTR) { // 排除被信号中断的情况
+            std::cerr << "epoll_wait errno, errno: " << errno << std::endl;
+        }
+    }
+
+    return activeChannels;
 }
 
 Epoll::~Epoll() {
     if (_epoll_fd != -1) {
-        close(_epoll_fd);
-        _epoll_fd = -1;
+        ::close(_epoll_fd);
     }
-    delete[] _events;
 }

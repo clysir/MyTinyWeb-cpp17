@@ -3,7 +3,7 @@
 #include "../include/Channel.h"
 #include <vector>
 
-EventLoop::EventLoop() : _ep(new Epoll()), _quit(false) {}
+EventLoop::EventLoop() : _ep{std::make_unique<Epoll>()} {}
 
 void EventLoop::loop() {
     while(!_quit) {
@@ -15,8 +15,15 @@ void EventLoop::loop() {
     }
 }
 
+void EventLoop::quit() {
+    _quit = true;
+}
+
 void EventLoop::updateChannel(Channel* ch) {
     _ep->updateChannel(ch);
 }
 
-EventLoop::~EventLoop() { delete _ep; }
+void EventLoop::removeChannel(Channel* ch) {
+    _ep->removeChannel(ch);
+}
+

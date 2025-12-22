@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.10)
 project(Tests)
 
 # 设置 C++ 标准
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # 开启调试和警告
 set(CMAKE_CXX_FLAGS "-Wall -g")
@@ -19,6 +19,8 @@ set(SRC_FILES
     ../src/Server.cpp
     ../src/EventLoop.cpp
     ../src/Channel.cpp
+    ../src/TcpConnection.cpp
+    ../src/Buffer.cpp
 )
 
 # 3. 生成可执行文件

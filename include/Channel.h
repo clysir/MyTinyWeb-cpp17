@@ -2,6 +2,7 @@
 
 #include <functional>
 #include <cstdint>
+#include <sys/epoll.h>
 
 class Epoll;
 
@@ -15,27 +16,45 @@ public:
     ~Channel();
 
 public:
-    // 核心功能 1: 开启监听
-    void enableReading();
-    void setReadCallback(Callback cb) { _readCallback = cb; }
-    // 这个函数内部判断是 读事件 还是 写事件，然后调对应的 _callback
+    // 核心：由 EventLoop 调用，分发不同类型的事件
     void handleEvent(); 
-    int getFd() const { return _fd; }
-    uint32_t getEvents() const { return _events; }
-    uint32_t getRevents() const { return _revents; }
-    void setRevents(uint32_t rev) { _revents = rev; }//给Epoll 用的
-    bool isInEpoll() const { return _inEpoll; }
-    void setInEpoll(bool in = true) { _inEpoll = in; }
-    
-private:    
-    Epoll* _ep;
-    int _fd;
-    
-    bool _inEpoll = false;//默认不在epoll树上
 
-    uint32_t _events;
-    uint32_t _revents;//实际发生的事件
+    // --- 事件开关接口  ---
+    void enableReading();
+    void enableWriting();
+    void disableReading();
+    void disableWriting();
+    void disableAll();
+
+    // --- 状态查询-----
+    void setReadCallback(Callback cb) { _readCallback = std::move(cb); }
+    void setWriteCallback(Callback cb) { _writeCallback = std::move(cb); }
+    void setErrorCallback(Callback cb) { _errorCallback = std::move(cb); }
+    void setCloseCallback(Callback cb) { _closeCallback = std::move(cb); }
+
+    // --- 底层属性 ---
+    [[nodiscard]] int getFd() const noexcept { return _fd; }
+    [[nodiscard]] uint32_t getEvents() const noexcept { return _events; }
+    void setRevents(uint32_t rev) { _revents = rev; }//给Epoll 用的
+    [[nodiscard]] bool isInEpoll() const noexcept { return _inEpoll; }
+    [[nodiscard]] bool isReading() const noexcept { return _events & EPOLLIN; }
+    [[nodiscard]] bool isWriting() const noexcept { return _events & EPOLLOUT; }
+    [[nodiscard]] bool isNoneEvent() const noexcept { return _events == 0; }
+    void setInEpoll(bool in = true) { _inEpoll = in; }
+
+private:    
+    void update(); // 内部辅助：同步当前状态到 Epoll 树上
+
+    Epoll* _ep;
+    const int _fd;
+    
+    bool _inEpoll{false}; //默认不在epoll树上
+
+    uint32_t _events{0}; //用户感兴趣的事件（注册给内核）
+    uint32_t _revents{0}; //实际发生的事件（内核返回的）
 
     Callback _readCallback;//读回调
     Callback _writeCallback;//写回调
+    Callback _errorCallback;//错误回调
+    Callback _closeCallback;//关闭回调
 };
