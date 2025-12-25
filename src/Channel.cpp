@@ -2,7 +2,7 @@
 #include "../include/Epoll.h"
 #include <sys/epoll.h>
 
-Channel::Channel(Epoll * ep,int fd) : _ep(ep), _fd(fd) {}
+Channel::Channel(Epoll * ep, int fd) : _ep(ep), _fd(fd) {}
 
 // 拨动开关后，必须点一下“同步”
 void Channel::update() {
@@ -10,7 +10,7 @@ void Channel::update() {
 }
 
 void Channel::enableReading() {
-    _events = EPOLLIN | EPOLLPRI;
+    _events |= (EPOLLIN | EPOLLPRI);
     update();
 }
 

@@ -21,8 +21,8 @@ public:
     using Ptr = std::shared_ptr<TcpConnection>;//类型宏定义
     // 回调函数定义
     using ConnectionCallback = std::function<void(const Ptr&)>;
-    using MessageCallback = std::function<void(const Ptr&, Buffer*)>;
-    using CloseCallback = std::function<void(const TcpConnection::Ptr&)>;
+    using MessageCallback = std::function<void(const Ptr&, Buffer*)>;//此处buffer不用引用 是因为 引用的条件是 参数必须存在
+    using CloseCallback = std::function<void(const Ptr&)>;
 
     TcpConnection(EventLoop* loop,int fd, const InetAddress& localAddr, const InetAddress& peerAddr);
     ~TcpConnection() = default;
@@ -42,6 +42,7 @@ public:
 
     [[nodiscard]] int getFd() const noexcept { return _socket->getFd(); }
 
+    [[nodiscard]] bool connected() const noexcept { return _state == kConnected; }
 private:
     // 由 Channel 触发的底层回调
     void handleRead();
@@ -75,4 +76,5 @@ private:
     ConnectionCallback _connectionCallback;
     MessageCallback _messageCallback;
     CloseCallback _closeCallback;
+
 };

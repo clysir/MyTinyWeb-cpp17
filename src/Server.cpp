@@ -14,7 +14,7 @@ Server::Server(EventLoop* loop, const InetAddress& addr)
     _socket->listen();
     _socket->setNonBlocking();
     
-    //只设置读回调
+    //只设置读回调 ----> 客户端每一次连接都会触发一次回调 
     _channel->setReadCallback([this]() { handleNewConnection(); });
     _channel->enableReading();
 }

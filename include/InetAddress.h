@@ -23,5 +23,4 @@ public:
     [[nodiscard]] uint16_t toPort() const;
 private:
     struct sockaddr_in _addr{};//默认初始化为0
-    uint16_t _port;
 };

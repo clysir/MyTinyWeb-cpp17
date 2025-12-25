@@ -4,6 +4,7 @@
 #include <string>
 #include <string_view>
 #include <algorithm>
+#include <sys/types.h>
 
 class Buffer 
 {
@@ -32,6 +33,8 @@ public:
 
     //核心IO接口
     ssize_t readFd(int fd, int* saveErrno);
+
+    [[nodiscard]] const char* findCRLF();
 
 private:
     void makeSpace(size_t len);//内部移动数据 或 扩容逻辑

@@ -25,7 +25,7 @@ void Socket::setReusePort(bool on) {
 }
 
 void Socket::bindAddress(const InetAddress& addr) {
-   if( ::bind(_fd,addr.getSockAddr(),addr.getSockAddrLen()) < 0 ) {
+   if( ::bind(_fd, addr.getSockAddr(), addr.getSockAddrLen()) < 0 ) {
        std::cerr << "Bind failed, error: " << errno << std::endl;
    }
 
@@ -43,7 +43,8 @@ void Socket::setNonBlocking() {
 
 int Socket::accept(InetAddress& peeraddr) {
     socklen_t len = sizeof(struct sockaddr_in);
-    int accept_fd = ::accept(_fd,peeraddr.getSockAddr(),&len);
+    // 使用 accept4 原子地设置非阻塞和 exec 关闭标志
+    int accept_fd = ::accept4(_fd, peeraddr.getSockAddr(), &len, SOCK_NONBLOCK | SOCK_CLOEXEC);
     if (accept_fd < 0) {
         std::cerr << "Accept failed, error: " << errno << std::endl;
     }

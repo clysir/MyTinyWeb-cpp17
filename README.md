@@ -2,7 +2,13 @@
 
 一个基于 **Reactor 模式** 的轻量级 C++ 高性能网络服务器。本项目旨在从底层 Socket 编程开始，逐步构建一个支持高并发、具备现代 C++ 特性的 Web 服务器。
 
-## 🚀 当前版本功能 (V2.0 - TcpConnection 阶段)
+## 🚀 当前版本功能 (V2.5 - HTTP 静态响应)
+
+### ✅ 新增 HTTP 模块
+- **HttpRequest**：存储 HTTP 请求信息（method, path, query, headers, body）
+- **HttpResponse**：构建 HTTP 响应，自动添加 Content-Length
+- **HttpContext**：状态机解析器，支持分块数据接收
+- **HttpServer**：HTTP 服务器封装，提供简洁的回调 API
 
 ### ✅ 核心组件
 - **Socket**：RAII 封装，支持 `SO_REUSEADDR/SO_REUSEPORT`
@@ -10,9 +16,9 @@
 - **Epoll**：使用 `std::vector` 动态管理事件，支持 `EPOLL_CLOEXEC`
 - **Channel**：事件分发器，支持读/写/关闭/错误回调
 - **Buffer**：双游标设计，支持 `readv` 高性能读取和动态扩容
-- **TcpConnection**：连接管理器，封装 Socket + Channel + Buffer，支持状态机和异步发送
+- **TcpConnection**：连接管理器，封装 Socket + Channel + Buffer
 - **EventLoop**：事件循环核心，驱动整个 Reactor 模式
-- **Server**：服务器入口，管理所有 TcpConnection，提供回调注册接口
+- **Server**：服务器入口，管理所有 TcpConnection
 
 ### ✅ 现代 C++17 特性
 - `std::unique_ptr` / `std::shared_ptr` 智能指针
@@ -24,20 +30,25 @@
 ## 🏗️ 架构设计
 
 ```
-                    ┌──────────────────────────────────────┐
-                    │              Server                  │
-                    │  (监听Socket + TcpConnection管理)     │
-                    └──────────────────┬───────────────────┘
-                                       │ creates
-                    ┌──────────────────▼───────────────────┐
-                    │           TcpConnection              │
-                    │  (Socket + Channel + 双Buffer)       │
-                    └──────────────────┬───────────────────┘
-                                       │ registers
-        ┌────────────────┬─────────────▼─────────┬────────────────┐
-        │     Channel    │        Epoll          │     Buffer     │
-        │   (事件开关)    │    (事件监听心脏)      │   (数据缓冲)    │
-        └────────────────┴───────────────────────┴────────────────┘
+                              ┌────────────────────────────────┐
+                              │         HttpServer             │
+                              │   (HTTP 协议层，回调式 API)      │
+                              └───────────────┬────────────────┘
+                                              │ composes
+                              ┌───────────────▼────────────────┐
+                              │            Server              │
+                              │   (监听Socket + 连接管理)        │
+                              └───────────────┬────────────────┘
+                                              │ creates
+                              ┌───────────────▼────────────────┐
+                              │        TcpConnection           │
+                              │   (Socket + Channel + Buffer)   │
+                              └───────────────┬────────────────┘
+                                              │ registers
+      ┌────────────────┬──────────────────────▼────┬────────────────┐
+      │     Channel    │          Epoll            │     Buffer     │
+      │    (事件开关)   │       (事件监听心脏)        │    (数据缓冲)   │
+      └────────────────┴───────────────────────────┴────────────────┘
 ```
 
 ## 🛠️ 如何编译与运行
@@ -55,18 +66,18 @@ cmake ..
 make
 ```
 
-### 运行 Echo 服务测试
+### 运行 HTTP 服务器测试
 ```bash
 # 终端 1: 启动服务器
-./server
+./http_server
 
-# 终端 2: 连接测试
-nc 127.0.0.1 8008
-# 输入任意文字，服务器会回复 Echo: ...
+# 终端 2: 测试访问
+curl http://localhost:8008/
+curl http://localhost:8008/hello
 ```
 
 ## 📅 下一步计划
-- [ ] 实现 HTTP 协议解析
+- [ ] 实现静态文件服务（从磁盘读取 HTML/CSS/JS）
 - [ ] Multi-Reactor 模式（One Loop Per Thread）
 - [ ] 引入线程池处理业务逻辑
 - [ ] 定时器 Timer 支持

@@ -21,6 +21,10 @@ set(SRC_FILES
     ../src/Channel.cpp
     ../src/TcpConnection.cpp
     ../src/Buffer.cpp
+    ../src/Http/HttpContext.cpp
+    ../src/Http/HttpRequest.cpp
+    ../src/Http/HttpResponse.cpp
+    ../src/Http/HttpServer.cpp
 )
 
 # 3. 生成可执行文件
@@ -28,5 +32,6 @@ set(SRC_FILES
 
 #add_executable(epoll_server epoll_server.cpp ${SRC_FILES})
 
-add_executable(server server.cpp ${SRC_FILES})
+#add_executable(server server.cpp ${SRC_FILES})
 
+add_executable(http_server http_server.cpp ${SRC_FILES})

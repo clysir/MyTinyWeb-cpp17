@@ -22,11 +22,11 @@ void TcpConnection::handleRead() {
     ssize_t n = _inputBuffer.readFd(_socket->getFd(), &saveErrno);
     if(n > 0) {
         //读到数据 调业务回调
-        _messageCallback(shared_from_this(), &_inputBuffer);
+        if(_messageCallback) _messageCallback(shared_from_this(), &_inputBuffer);
     } else if(n == 0) {
         handleClose();
     } else {
-        if(errno != EAGAIN && errno != EWOULDBLOCK) {
+        if(saveErrno != EAGAIN && saveErrno != EWOULDBLOCK) {
             handleError();
         }
     }
@@ -41,8 +41,9 @@ void TcpConnection::send(std::string_view msg) {
 
     // 尝试直接写
     if(!_channel->isWriting() && _outputBuffer.readableBytes() == 0) {
-        nwrote = ::write(_socket->getFd(), msg.data(), msg.size());
-        if(nwrote >= 0) {
+        ssize_t n = ::write(_socket->getFd(), msg.data(), msg.size());
+        if(n >= 0) {
+            nwrote = static_cast<size_t>(n);
             remaining = msg.size() - nwrote;
             if(remaining == 0) {
                 //这里以后在补充逻辑 这里已经 Mission Complete
