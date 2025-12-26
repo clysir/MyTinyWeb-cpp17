@@ -25,6 +25,7 @@ set(SRC_FILES
     ../src/Http/HttpRequest.cpp
     ../src/Http/HttpResponse.cpp
     ../src/Http/HttpServer.cpp
+    ../src/Http/MimeType.cpp
 )
 
 # 3. 生成可执行文件
@@ -34,4 +35,5 @@ set(SRC_FILES
 
 #add_executable(server server.cpp ${SRC_FILES})
 
-add_executable(http_server http_server.cpp ${SRC_FILES})
+#add_executable(http_server http_server.cpp ${SRC_FILES})
+add_executable(http_web http_web.cpp ${SRC_FILES})

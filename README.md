@@ -2,9 +2,14 @@
 
 一个基于 **Reactor 模式** 的轻量级 C++ 高性能网络服务器。本项目旨在从底层 Socket 编程开始，逐步构建一个支持高并发、具备现代 C++ 特性的 Web 服务器。
 
-## 🚀 当前版本功能 (V2.5 - HTTP 静态响应)
+## 🚀 当前版本功能 (V3.0 - 静态文件服务)
 
-### ✅ 新增 HTTP 模块
+### ✅ 新增静态文件服务
+- **MimeType**：根据文件后缀自动识别 Content-Type（html/css/js/png/jpg 等）
+- **静态文件服务**：支持从 `www/` 目录读取 HTML、CSS、JS、图片等资源
+- **多页面支持**：通过 `<a href>` 实现页面跳转
+
+### ✅ HTTP 模块
 - **HttpRequest**：存储 HTTP 请求信息（method, path, query, headers, body）
 - **HttpResponse**：构建 HTTP 响应，自动添加 Content-Length
 - **HttpContext**：状态机解析器，支持分块数据接收
@@ -66,18 +71,21 @@ cmake ..
 make
 ```
 
-### 运行 HTTP 服务器测试
+### 运行静态文件服务器
 ```bash
-# 终端 1: 启动服务器
-./http_server
+# 终端 1: 从项目根目录启动（重要！）
+cd ~/MyTinyWeb
+./tests/build/http_web
 
-# 终端 2: 测试访问
-curl http://localhost:8008/
-curl http://localhost:8008/hello
+# 终端 2: 浏览器访问
+# http://localhost:8008/           (首页)
+# http://localhost:8008/test.html   (其他页面)
+# http://localhost:8008/css/style.css (样式文件)
 ```
 
 ## 📅 下一步计划
-- [ ] 实现静态文件服务（从磁盘读取 HTML/CSS/JS）
+- [x] ~~实现静态文件服务（从磁盘读取 HTML/CSS/JS）~~ ✅ V3.0 已完成
+- [ ] POST 请求解析（表单提交、API 接口）
 - [ ] Multi-Reactor 模式（One Loop Per Thread）
 - [ ] 引入线程池处理业务逻辑
 - [ ] 定时器 Timer 支持

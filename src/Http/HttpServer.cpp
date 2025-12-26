@@ -49,9 +49,9 @@ void HttpServer::onMessage(const TcpConnection::Ptr& conn, Buffer* buf) {
         
         HttpResponse response;
 
-        _httpCallback(context.getRequest(), &response);
+        if(_httpCallback) _httpCallback(context.getRequest(), &response);
 
-        // 发送响应
+        // 发送响应   ---> 这里是 主函数会设置回调 并且向response里面写入数据  -- 然后我们只需要发送response就行
         std::cout << "[DEBUG] Sending response: " << response.toString() << std::endl;
         conn->send(response.toString());
 

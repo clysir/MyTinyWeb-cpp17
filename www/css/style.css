@@ -1,0 +1,18 @@
+body {
+    text-align: center;
+    margin: 0;
+    color: #0603b6ef;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+h1 {
+    margin: 20px;
+    color: #000000;
+    font-family: 'Courier New', Courier, monospace;
+}
+
+p {
+    margin: 16px;
+    color: aqua;
+    font-family: 'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
+}

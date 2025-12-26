@@ -44,7 +44,7 @@ std::string HttpResponse::toString() const {
     // Content-Length（必须有！否则 curl 不知道响应何时结束）
     response += "Content-Length: " + std::to_string(_body.size()) + "\r\n";
     
-    // Connection
+    // 关闭连接
     if(_closeConnection) {
         response += "Connection: close\r\n";
     }
