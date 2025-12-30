@@ -1,67 +1,75 @@
 # MyTinyWeb
 
-一个基于 **Reactor 模式** 的轻量级 C++ 高性能网络服务器。本项目旨在从底层 Socket 编程开始，逐步构建一个支持高并发、具备现代 C++ 特性的 Web 服务器。
+一个基于 **Multi-Reactor 模式** 的轻量级 C++ 高性能网络服务器。本项目旨在从底层 Socket 编程开始，逐步构建一个支持高并发、具备现代 C++ 特性的 Web 服务器。
 
-## 🚀 当前版本功能 (V3.0 - 静态文件服务)
+## 🚀 当前版本功能 (V4.0 - Multi-Reactor + 日志系统)
 
-### ✅ 新增静态文件服务
-- **MimeType**：根据文件后缀自动识别 Content-Type（html/css/js/png/jpg 等）
-- **静态文件服务**：支持从 `www/` 目录读取 HTML、CSS、JS、图片等资源
-- **多页面支持**：通过 `<a href>` 实现页面跳转
+### ✅ 新增 Multi-Reactor (One Loop Per Thread)
+- **EventLoopThread**：封装子线程 + EventLoop
+- **EventLoopThreadPool**：线程池管理，支持轮询分配
+- **跨线程通信**：`runInLoop` + `eventfd` 唤醒机制
+- **线程安全设计**：主线程 accept，子线程处理读写
+
+### ✅ 新增同步日志系统
+- **LogLevel**：DEBUG / INFO / WARN / ERROR / FATAL 五级
+- **LogStream**：流式 API，支持链式调用
+- **Logger**：自动添加时间戳、文件名、行号
+
+### ✅ 性能表现
+| 并发数 | QPS | 延迟 |
+|--------|-----|------|
+| 100 | 3,700 | 38ms |
+| 200 | **4,200** | 42ms |
+| 500 | 3,800 | 98ms |
+
+*测试环境：WSL2，wrk 压测*
 
 ### ✅ HTTP 模块
-- **HttpRequest**：存储 HTTP 请求信息（method, path, query, headers, body）
-- **HttpResponse**：构建 HTTP 响应，自动添加 Content-Length
-- **HttpContext**：状态机解析器，支持分块数据接收
-- **HttpServer**：HTTP 服务器封装，提供简洁的回调 API
+- **HttpRequest**：存储 HTTP 请求信息
+- **HttpResponse**：构建 HTTP 响应
+- **HttpContext**：状态机解析器，绑定到每个连接
+- **HttpServer**：HTTP 服务器封装
 
 ### ✅ 核心组件
-- **Socket**：RAII 封装，支持 `SO_REUSEADDR/SO_REUSEPORT`
-- **InetAddress**：IP 地址与端口的封装
-- **Epoll**：使用 `std::vector` 动态管理事件，支持 `EPOLL_CLOEXEC`
-- **Channel**：事件分发器，支持读/写/关闭/错误回调
-- **Buffer**：双游标设计，支持 `readv` 高性能读取和动态扩容
-- **TcpConnection**：连接管理器，封装 Socket + Channel + Buffer
-- **EventLoop**：事件循环核心，驱动整个 Reactor 模式
-- **Server**：服务器入口，管理所有 TcpConnection
+- **Socket**：RAII 封装
+- **Epoll**：使用 `std::vector` 动态管理事件
+- **Channel**：事件分发器
+- **Buffer**：双游标设计，支持 `readv` 高性能读取
+- **TcpConnection**：连接管理器 + 私有 Context
+- **EventLoop**：事件循环核心 + 跨线程任务队列
+- **Server**：服务器入口 + 线程池
 
 ### ✅ 现代 C++17 特性
 - `std::unique_ptr` / `std::shared_ptr` 智能指针
 - `std::string_view` 零拷贝字符串视图
-- `[[nodiscard]]`、`noexcept` 属性
-- Lambda 表达式与 `std::function` 回调
-- `std::enable_shared_from_this` 生命周期管理
+- `std::any` 类型擦除存储 Context
+- `std::function` + Lambda 回调
+- `std::condition_variable` 线程同步
 
-## 🏗️ 架构设计
+## 🏗️ Multi-Reactor 架构
 
 ```
-                              ┌────────────────────────────────┐
-                              │         HttpServer             │
-                              │   (HTTP 协议层，回调式 API)      │
-                              └───────────────┬────────────────┘
-                                              │ composes
-                              ┌───────────────▼────────────────┐
-                              │            Server              │
-                              │   (监听Socket + 连接管理)        │
-                              └───────────────┬────────────────┘
-                                              │ creates
-                              ┌───────────────▼────────────────┐
-                              │        TcpConnection           │
-                              │   (Socket + Channel + Buffer)   │
-                              └───────────────┬────────────────┘
-                                              │ registers
-      ┌────────────────┬──────────────────────▼────┬────────────────┐
-      │     Channel    │          Epoll            │     Buffer     │
-      │    (事件开关)   │       (事件监听心脏)        │    (数据缓冲)   │
-      └────────────────┴───────────────────────────┴────────────────┘
+                    ┌──────────────────┐
+                    │   Main Thread    │
+                    │   (accept only)  │
+                    │    EventLoop     │
+                    └────────┬─────────┘
+                             │ dispatch
+         ┌───────────────────┼───────────────────┐
+         ▼                   ▼                   ▼
+┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
+│   IO Thread 1   │ │   IO Thread 2   │ │   IO Thread 3   │
+│   EventLoop     │ │   EventLoop     │ │   EventLoop     │
+│  Client 0,3,6   │ │  Client 1,4,7   │ │  Client 2,5,8   │
+└─────────────────┘ └─────────────────┘ └─────────────────┘
 ```
 
 ## 🛠️ 如何编译与运行
 
 ### 依赖环境
-- Linux 系统 (由于使用了 Epoll)
+- Linux 系统 (Epoll)
 - CMake (3.10+)
-- 支持 C++17 的编译器 (如 GCC 7+)
+- C++17 编译器 (GCC 7+)
 
 ### 编译步骤
 ```bash
@@ -71,25 +79,34 @@ cmake ..
 make
 ```
 
-### 运行静态文件服务器
+### 运行服务器
 ```bash
-# 终端 1: 从项目根目录启动（重要！）
 cd ~/MyTinyWeb
 ./tests/build/http_web
-
-# 终端 2: 浏览器访问
-# http://localhost:8008/           (首页)
-# http://localhost:8008/test.html   (其他页面)
-# http://localhost:8008/css/style.css (样式文件)
 ```
 
+### 压力测试
+```bash
+# 安装 wrk
+sudo apt install wrk
+
+# 测试
+wrk -t4 -c200 -d10s http://127.0.0.1:8008/
+```
+
+## 📅 版本历史
+
+- **V4.0**: Multi-Reactor + 同步日志系统
+- **V3.0**: 静态文件服务
+- **V2.5**: HTTP 协议支持
+- **V2.0**: TcpConnection 封装
+- **V1.0**: 基础 Reactor 模式
+
 ## 📅 下一步计划
-- [x] ~~实现静态文件服务（从磁盘读取 HTML/CSS/JS）~~ ✅ V3.0 已完成
-- [ ] POST 请求解析（表单提交、API 接口）
-- [ ] Multi-Reactor 模式（One Loop Per Thread）
-- [ ] 引入线程池处理业务逻辑
+- [ ] 异步日志系统（双缓冲）
 - [ ] 定时器 Timer 支持
-- [ ] 日志系统
+- [ ] POST 请求解析
+- [ ] 连接池
 
 ---
 *Created by [chenly](https://github.com/chenly)*

@@ -8,7 +8,6 @@
 #include "HttpResponse.h"
 #include "HttpContext.h"
 #include <functional>
-#include <map>
 
 class HttpServer
 {
@@ -30,5 +29,5 @@ private:
 private:
     Server _server;
     HttpCallback _httpCallback;
-    std::map<int, HttpContext> _contexts; // fd -> 解析上下文
+    //std::map<int, HttpContext> _contexts; // fd -> 解析上下文
 };

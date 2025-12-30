@@ -125,4 +125,5 @@ void TcpConnection::connectDestroyed() {
         _channel->disableAll();
         if(_connectionCallback) _connectionCallback(shared_from_this());
     }
+    _loop->removeChannel(_channel.get());
 }

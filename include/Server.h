@@ -7,6 +7,7 @@
 #include <memory> 
 #include <map>
 #include <functional>
+#include "EventLoopThreadPool.h"
 
 // 前置声明
 class EventLoop;
@@ -14,7 +15,7 @@ class EventLoop;
 class Server 
 {
 public:
-    Server(EventLoop* loop, const InetAddress& addr);
+    Server(EventLoop* loop, const InetAddress& addr, int threadNums = 0);
     ~Server() = default;
     Server(const Server&) = delete;
     Server& operator=(const Server&) = delete;
@@ -29,7 +30,7 @@ public:
 private:
     void handleNewConnection(); 
     void removeConnection(const TcpConnection::Ptr& conn);
-
+    void removeConnectionInLoop(const TcpConnection::Ptr& conn);
 private:
     EventLoop* _loop;
 
@@ -39,6 +40,7 @@ private:
     std::unique_ptr<Channel> _channel;
     //必须使用shared 不然执行回调时 很可能会报错
     std::map<int, TcpConnection::Ptr> _connection;
+    std::unique_ptr<EventLoopThreadPool> _threadPool; //线程池
 
     ConnectionCallback _connectionCallback;
     MessageCallback _messageCallback;

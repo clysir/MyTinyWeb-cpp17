@@ -8,6 +8,7 @@
 #include "Buffer.h"
 #include "Socket.h"
 #include "Channel.h"
+#include <any>
 
 class EventLoop;
 
@@ -41,8 +42,14 @@ public:
     void connectDestroyed(); //销毁连接
 
     [[nodiscard]] int getFd() const noexcept { return _socket->getFd(); }
-
+    [[nodiscard]] EventLoop* getLoop() const noexcept { return _loop; }
     [[nodiscard]] bool connected() const noexcept { return _state == kConnected; }
+
+public:
+    void setContext(const std::any& ctx) { _context = ctx; }
+    [[nodiscard]] std::any& getContext() { return _context; }
+    [[nodiscard]] const std::any& getContext() const { return _context; }
+
 private:
     // 由 Channel 触发的底层回调
     void handleRead();
@@ -77,4 +84,5 @@ private:
     MessageCallback _messageCallback;
     CloseCallback _closeCallback;
 
+    std::any _context; // 每个连接的私有上下文
 };

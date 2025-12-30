@@ -21,11 +21,15 @@ set(SRC_FILES
     ../src/Channel.cpp
     ../src/TcpConnection.cpp
     ../src/Buffer.cpp
+    ../src/EventLoopThread.cpp
+    ../src/EventLoopThreadPool.cpp
     ../src/Http/HttpContext.cpp
     ../src/Http/HttpRequest.cpp
     ../src/Http/HttpResponse.cpp
     ../src/Http/HttpServer.cpp
     ../src/Http/MimeType.cpp
+    ../src/Log/Logger.cpp
+    ../src/Log/LogStream.cpp
 )
 
 # 3. 生成可执行文件

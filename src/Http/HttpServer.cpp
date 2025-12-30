@@ -1,5 +1,5 @@
 #include "../../include/Http/HttpServer.h"
-#include <iostream>
+#include "../../include/Log/Logger.h"
 
 HttpServer::HttpServer(EventLoop* loop, const InetAddress& localAddr, const std::string& name) 
             : _server{loop, localAddr}             
@@ -16,25 +16,22 @@ HttpServer::HttpServer(EventLoop* loop, const InetAddress& localAddr, const std:
 void HttpServer::onConnection(const TcpConnection::Ptr& conn) {
     if(conn->connected()) {
         // 来一个客户端 给一个解析上下文
-        _contexts[conn->getFd()] = HttpContext();
+        conn->setContext(HttpContext()); // 这里会默认创建一个HC对象 都是初始条件
     }
-    else {
-        // 客户端断开
-        _contexts.erase(conn->getFd());
-    }
+    // 断开时 conn析构会自动清理
 }
 
 void HttpServer::onMessage(const TcpConnection::Ptr& conn, Buffer* buf) {
 
-    HttpContext& context = _contexts[conn->getFd()];
+    HttpContext& context = std::any_cast<HttpContext&>(conn->getContext());
 
-    std::cout << "[DEBUG] onMessage called, buf size: " << buf->readableBytes() << std::endl;
-    std::cout << "[DEBUG] buf content: " << buf->peekAsView() << std::endl;
+    // LOG_DEBUG << "onMessage called, buf size: " << buf->readableBytes();
+    // LOG_DEBUG << "buf content: " << buf->peekAsView();
 
     // 尝试解析
     context.parseRequest(buf);
     
-    std::cout << "[DEBUG] isComplete: " << context.isComplete() << ", hasError: " << context.hasError() << std::endl;
+    // LOG_DEBUG << "isComplete: " << context.isComplete() << ", hasError: " << context.hasError();
     
     if(context.hasError()) {
         //解析失败 
@@ -45,14 +42,14 @@ void HttpServer::onMessage(const TcpConnection::Ptr& conn, Buffer* buf) {
 
     // 解析完成 调用用户回调
     if(context.isComplete()) {
-        std::cout << "[DEBUG] Request complete, path: " << context.getRequest().getPath() << std::endl;
+        // LOG_DEBUG << "Request complete, path: " << context.getRequest().getPath();
         
         HttpResponse response;
 
         if(_httpCallback) _httpCallback(context.getRequest(), &response);
 
         // 发送响应   ---> 这里是 主函数会设置回调 并且向response里面写入数据  -- 然后我们只需要发送response就行
-        std::cout << "[DEBUG] Sending response: " << response.toString() << std::endl;
+        // LOG_DEBUG << "Sending response: " << response.toString();
         conn->send(response.toString());
 
         // 根据connection 头决定是否关闭
